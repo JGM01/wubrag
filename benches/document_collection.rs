@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::path::Path;
 
-use wubrag::{grab_all_documents, grab_all_documents_optimized};
+use wubrag::*;
 
 fn bench_grab_documents(c: &mut Criterion) {
     let root_path = Path::new("tests/examples/ladybird");
@@ -14,21 +14,10 @@ fn bench_grab_documents(c: &mut Criterion) {
     });
 }
 
-fn bench_grab_documents_optimized(c: &mut Criterion) {
-    let root_path = Path::new("tests/examples/ladybird");
-
-    c.bench_function("grab_all_documents_optimized", |b| {
-        b.iter(|| {
-            let docs = grab_all_documents_optimized(std::hint::black_box(&root_path));
-            std::hint::black_box(docs);
-        })
-    });
-}
-
 criterion_group! {
     name = doc_benches;
-    config = Criterion::default().sample_size(30);
-    targets = bench_grab_documents, bench_grab_documents_optimized
+    config = Criterion::default().sample_size(10);
+    targets = bench_grab_documents
 }
 
 criterion_main!(doc_benches);
