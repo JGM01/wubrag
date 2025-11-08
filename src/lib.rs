@@ -266,7 +266,7 @@ fn is_chunk_worthy(kind: &str) -> bool {
         || kind.contains("class")
         || kind == "struct_item"
         || kind == "impl_item"
-        || kind == "module_item"
+        || kind == "mod_item"
         || kind == "enum_item"
         || kind == "trait_item"
         || kind == "variable_declaration"
@@ -300,7 +300,7 @@ fn get_query_from_extension(extension: &str) -> Option<String> {
             (function_item) @chunk
             (struct_item) @chunk
             (impl_item) @chunk
-            (module_item) @chunk
+            (mod_item) @chunk
             (enum_item) @chunk
             (trait_item) @chunk
             "#
@@ -356,7 +356,7 @@ fn f2doc(root: &Path, relative_path: &Path) -> Option<Document> {
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_string())
-            .unwrap(),
+            .unwrap_or("".to_string()),
         size_bytes: path.metadata().expect("oopsie").len(),
     };
 
