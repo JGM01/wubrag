@@ -1,4 +1,4 @@
-use std::{path::Path, sync::atomic::AtomicU32};
+use std::{collections::HashMap, path::Path, sync::atomic::AtomicU32};
 
 pub struct Chunk {
     pub id: u32,                // primary key, u32 because linux kernel is like 40million LOC
@@ -20,8 +20,36 @@ pub struct Document {
 
 #[derive(Debug, Clone)]
 pub struct DocumentMetadata {
-    extension: Option<String>,
+    extension: String,
     size_bytes: u64,
+}
+
+fn chunk_all_documents(docs: &[Document]) -> (Vec<Chunk>, HashMap<u32, usize>) {
+    let next_id = AtomicU32::new(0);
+
+    let doc_chunks_vec: Vec<Vec<Chunk>> = docs
+        .par_iter()
+        .map(|doc| chunk_document(doc.id, &doc.text, &doc.meta.extension, &next_id))
+        .collect();
+
+    let mut all_chunks =
+        Vec::with_capacity(doc_chunks_vec.iter().map(|dc| dc.len()).sum::<usize>());
+
+    for doc_chunks in doc_chunks_vec {
+        all_chunks.extend(doc_chunks);
+    }
+
+    let id_to_idx: HashMap<u32, usize> = all_chunks
+        .iter()
+        .enumerate()
+        .map(|(idx, doc)| (doc.id, idx))
+        .collect();
+
+    (all_chunks, id_to_idx)
+}
+
+fn chunk_document(doc_id: u32, doc_text: &str, doc_ext: &str, next_id: &AtomicU32) -> Vec<Chunk> {
+    todo!()
 }
 
 use jwalk::WalkDir;
@@ -40,7 +68,8 @@ fn f2doc(root: &Path, relative_path: &Path) -> Option<Document> {
         extension: path
             .extension()
             .and_then(|e| e.to_str())
-            .map(|e| e.to_string()),
+            .map(|e| e.to_string())
+            .unwrap(),
         size_bytes: path.metadata().expect("oopsie").len(),
     };
 
