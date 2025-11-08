@@ -49,6 +49,70 @@ lazy_static! {
     };
 }
 
+pub fn print_chunks_tree(chunks: &[Chunk], chunk_index: Option<&HashMap<u32, usize>>) {
+    let roots: Vec<u32> = chunks
+        .iter()
+        .filter_map(|c| c.parent_id.is_none().then_some(c.id))
+        .collect();
+
+    if roots.is_empty() {
+        println!("No root chunks found.");
+        return;
+    }
+
+    println!("Chunk Hierarchy Tree ({} total chunks):\n", chunks.len());
+    for &root_id in &roots {
+        let root_idx = chunk_index
+            .as_ref()
+            .and_then(|idx| idx.get(&root_id).copied())
+            .unwrap_or_else(|| chunks.iter().position(|c| c.id == root_id).unwrap_or(0));
+        print_chunk_recursive(&chunks[root_idx], chunks, chunk_index, 0);
+        println!();
+    }
+}
+
+fn print_chunk_recursive(
+    chunk: &Chunk,
+    chunks: &[Chunk],
+    chunk_index: Option<&HashMap<u32, usize>>,
+    indent: usize,
+) {
+    let indent_str = "  ".repeat(indent);
+    let text_preview = if chunk.text.len() > 100 {
+        format!("{}...", &chunk.text[0..100])
+    } else {
+        chunk.text.clone()
+    };
+
+    println!(
+        "{}{} [{}]: {} tokens, {} children (parent: {:?})",
+        indent_str,
+        chunk.id,
+        chunk.chunk_type,
+        chunk.token_count,
+        chunk.children_ids.len(),
+        chunk.parent_id
+    );
+    println!("{}  Text: \"{}\"", indent_str, text_preview.trim());
+    println!("{}  ---", indent_str);
+
+    // Recurse on children
+    for &child_id in &chunk.children_ids {
+        let child_idx = chunk_index
+            .as_ref()
+            .and_then(|idx| idx.get(&child_id).copied())
+            .unwrap_or_else(|| chunks.iter().position(|c| c.id == child_id).unwrap_or(0));
+        if let Some(child_chunk) = chunks.get(child_idx) {
+            print_chunk_recursive(child_chunk, chunks, chunk_index, indent + 1);
+        } else {
+            println!(
+                "{}  [WARNING: Missing child chunk ID {}]",
+                indent_str, child_id
+            );
+        }
+    }
+}
+
 pub fn chunk_all_documents(docs: &[Document]) -> (Vec<Chunk>, HashMap<u32, usize>) {
     let next_id = AtomicU32::new(0);
 

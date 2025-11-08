@@ -14,3 +14,10 @@ fn test_ids_are_unique() {
     }
     assert!(true);
 }
+#[test]
+fn test_chunks() {
+    let docs = grab_all_documents(Path::new("tests/examples/example-rs"));
+    let (chunks, index) = chunk_all_documents(&docs);
+    print_chunks_tree(&chunks, Some(&index));
+    assert!(true);
+}
