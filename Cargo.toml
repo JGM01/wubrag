@@ -13,9 +13,11 @@ jwalk = "0.8.1"
 lazy_static = "1.5.0"
 rayon = "1.11.0"
 tiktoken-rs = "0.7.0"
-tree-sitter = "0.20.10"
-tree-sitter-rust = "0.20.4"
-tree-sitter-toml = "0.20.0"
+tree-sitter = "0.25.10"
+tree-sitter-c = "0.24.1"
+tree-sitter-cpp = "0.23.4"
+tree-sitter-html = "0.23.2"
+tree-sitter-rust = "0.24.0"
 walkdir = "2.5.0"
 
 [[test]]
@@ -26,6 +28,9 @@ harness = true
 [profile.bench]
 debug = true
 
+[[bench]]
+name = "end_to_end"
+harness = false
 [[bench]]
 name = "document_collection"
 harness = false

@@ -10,8 +10,7 @@ use std::{
     path::Path,
     sync::atomic::{AtomicU32, Ordering},
 };
-use tiktoken_rs::o200k_base;
-use tree_sitter::{Language, Node, Parser, Query, QueryCursor, QueryMatch, QueryMatches};
+use tree_sitter::{Language, Node, Parser, Query, QueryCursor, StreamingIterator};
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
@@ -41,8 +40,11 @@ pub struct DocumentMetadata {
 lazy_static! {
     static ref LANGUAGE_MAP: HashMap<&'static str, Language> = {
         let mut m = HashMap::new();
-        m.insert("rs", tree_sitter_rust::language());
-        m.insert("toml", tree_sitter_toml::language());
+        m.insert("rs", tree_sitter_rust::LANGUAGE.into());
+        m.insert("cpp", tree_sitter_cpp::LANGUAGE.into());
+        m.insert("hpp", tree_sitter_cpp::LANGUAGE.into());
+        m.insert("c", tree_sitter_c::LANGUAGE.into());
+        m.insert("h", tree_sitter_c::LANGUAGE.into());
         m
     };
 }
@@ -138,12 +140,12 @@ fn chunk_document(doc_id: u32, doc_text: &str, doc_ext: &str, next_id: &AtomicU3
 
     if let Some(lang) = language {
         let mut parser = Parser::new();
-        parser.set_language(*lang).expect("Bad language!");
+        parser.set_language(lang).expect("Bad language!");
         let tree = parser.parse(doc_text, None).expect("Parse failed");
         let root = tree.root_node();
 
         let query_str = get_query_from_extension(doc_ext).unwrap_or("".to_string());
-        let query = Query::new(*lang, &query_str).expect("invalid query");
+        let query = Query::new(lang, &query_str).expect("invalid query");
 
         let mut cursor = QueryCursor::new();
         let b_text = doc_text.as_bytes();
@@ -186,10 +188,8 @@ fn traverse_and_chunk(
     let mut cursor = node.walk();
 
     for child in node.children(&mut cursor) {
-        if is_chunk_worthy(child.kind()) {
-            let sub_chunks = traverse_and_chunk(&child, doc_text, next_id, doc_id, Some(id));
-            children.extend(sub_chunks);
-        }
+        let sub_chunks = traverse_and_chunk(&child, doc_text, next_id, doc_id, Some(id));
+        children.extend(sub_chunks);
     }
 
     let start = node.start_byte() as usize;
@@ -230,38 +230,12 @@ fn naive_chunk_document(doc_text: &str, doc_id: u32, next_id: &AtomicU32) -> Vec
     }
     chunks
 }
-fn is_chunk_worthy(kind: &str) -> bool {
-    if kind.contains("function")
-        || kind.contains("method")
-        || kind.contains("class")
-        || kind == "struct_item"
-        || kind == "impl_item"
-        || kind == "mod_item"
-        || kind == "enum_item"
-        || kind == "trait_item"
-        || kind == "variable_declaration"
-        || kind == "arguments"
-        || kind == "expression_statement"
-    {
-        return true;
-    }
-
-    if kind == "table" || kind == "dotted_key" || kind == "array" || kind == "inline_table" {
-        return true;
-    }
-
-    if kind == "arrow_function" {
-        return true;
-    }
-
-    false
-}
 
 fn get_query_from_extension(extension: &str) -> Option<String> {
     match extension {
         "rs" => Some(
             r#"
-            ;; Rust: Semantic items
+            ;; Rust top-level items
             (function_item) @chunk
             (struct_item) @chunk
             (impl_item) @chunk
@@ -273,31 +247,54 @@ fn get_query_from_extension(extension: &str) -> Option<String> {
         ),
         "py" => Some(
             r#"
-            ;; Python: Functions, classes, top-level statements
+            ;; Python top-level definitions
             (function_definition) @chunk
             (class_definition) @chunk
-            (arguments) @chunk  ;; For function signatures if needed
-            (expression_statement) @chunk  ;; Fallback for loose code
             "#
             .to_string(),
         ),
         "js" => Some(
             r#"
-            ;; JavaScript: Functions, classes, etc.
+            ;; JavaScript / TypeScript top-level definitions
             (function) @chunk
             (arrow_function) @chunk
             (class_declaration) @chunk
             (method_definition) @chunk
-            (variable_declaration) @chunk  ;; For top-level vars
+            (variable_declaration) @chunk
             "#
             .to_string(),
         ),
-        "toml" => Some(
+        "c" => Some(
             r#"
-            ;; TOML: Config structures
-            (table) @chunk          ;; [table] sections
-            (dotted_key) @chunk     ;; [table.subtable]
-            (inline_table) @chunk   ;; Inline { } tables
+            ;; C top-level items
+            (function_definition) @chunk
+            (struct_specifier) @chunk
+            (union_specifier) @chunk
+            (enum_specifier) @chunk
+            (declaration
+                (type_specifier) @type_decl
+            ) @chunk
+            "#
+            .to_string(),
+        ),
+        "cpp" => Some(
+            r#"
+            ;; C++ top-level items
+            (function_definition) @chunk
+            (class_specifier) @chunk
+            (struct_specifier) @chunk
+            (enum_specifier) @chunk
+            (template_declaration) @chunk
+            (declaration
+                (type_specifier) @type_decl
+            ) @chunk
+            "#
+            .to_string(),
+        ),
+        "html" => Some(
+            r#"
+            ;; HTML fallback: treat entire file as a single chunk
+            (element) @chunk
             "#
             .to_string(),
         ),
