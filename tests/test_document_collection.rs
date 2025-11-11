@@ -16,7 +16,7 @@ fn test_ids_are_unique() {
 }
 #[test]
 fn test_chunks() {
-    let docs = grab_all_documents(Path::new("tests/examples/ratatui"));
+    let docs = grab_all_documents(Path::new("tests/examples/ladybird"));
     let (chunks, index) = chunk_all_documents(&docs);
     print_chunks_tree(&chunks, Some(&index));
     assert!(true);
@@ -24,7 +24,7 @@ fn test_chunks() {
 
 #[test]
 fn print_doc_names() {
-    let docs = grab_all_documents(Path::new("tests/examples/ratatui"));
+    let docs = grab_all_documents(Path::new("tests/examples/ladybird"));
     print_document_names(&docs);
     assert!(true);
 }
