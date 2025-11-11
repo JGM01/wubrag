@@ -45,6 +45,10 @@ lazy_static! {
         m.insert("hpp", tree_sitter_cpp::LANGUAGE.into());
         m.insert("c", tree_sitter_c::LANGUAGE.into());
         m.insert("h", tree_sitter_c::LANGUAGE.into());
+        m.insert("js", tree_sitter_javascript::LANGUAGE.into());
+        m.insert("py", tree_sitter_python::LANGUAGE.into());
+        m.insert("swift", tree_sitter_swift::LANGUAGE.into());
+        m.insert("java", tree_sitter_java::LANGUAGE.into());
         m
     };
 }
@@ -162,10 +166,34 @@ fn chunk_document(doc_id: u32, doc_text: &str, doc_ext: &str, next_id: &AtomicU3
         while let Some(m) = qmatches.next() {
             for capture in m.captures {
                 let node = capture.node;
-                let children = traverse_and_chunk(&node, doc_text, next_id, doc_id, None);
+                let start = node.start_byte() as usize;
+                let end = node.end_byte() as usize;
+                let chunk_text = &doc_text[start..end].trim();
+                let token_count = chunk_text.len();
 
-                chunks.extend(children);
+                let id = next_id.fetch_add(1, Ordering::SeqCst);
+                chunks.push(Chunk {
+                    id,
+                    doc_id,
+                    text: chunk_text.to_string(),
+                    chunk_type: node.kind().to_string(),
+                    parent_id: None,
+                    children_ids: vec![],
+                    token_count,
+                });
             }
+        }
+        if chunks.is_empty() {
+            let id = next_id.fetch_add(1, Ordering::SeqCst);
+            chunks.push(Chunk {
+                id,
+                doc_id,
+                text: doc_text.trim().to_string(),
+                chunk_type: "document".to_string(),
+                parent_id: None,
+                children_ids: vec![],
+                token_count: doc_text.len(),
+            });
         }
     } else {
         chunks = naive_chunk_document(doc_text, doc_id, next_id);
@@ -256,7 +284,7 @@ fn get_query_from_extension(extension: &str) -> Option<String> {
         "js" => Some(
             r#"
             ;; JavaScript / TypeScript top-level definitions
-            (function) @chunk
+            (function_declaration) @chunk
             (arrow_function) @chunk
             (class_declaration) @chunk
             (method_definition) @chunk
@@ -295,6 +323,28 @@ fn get_query_from_extension(extension: &str) -> Option<String> {
             r#"
             ;; HTML fallback: treat entire file as a single chunk
             (element) @chunk
+            "#
+            .to_string(),
+        ),
+        "swift" => Some(
+            r#"
+            ;; Swift top-level items
+            (function_declaration) @chunk
+            (class_declaration) @chunk
+            (struct_declaration) @chunk
+            (enum_declaration) @chunk
+            (protocol_declaration) @chunk
+            (extension_declaration) @chunk
+            "#
+            .to_string(),
+        ),
+        "java" => Some(
+            r#"
+            ;; Java top-level items
+            (class_declaration) @chunk
+            (function_declaration) @chunk
+            (interface_declaration) @chunk
+            (enum_declaration) @chunk
             "#
             .to_string(),
         ),

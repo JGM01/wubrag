@@ -3,7 +3,7 @@ use std::path::Path;
 use wubrag::*;
 
 fn bench_chunk_documents(c: &mut Criterion) {
-    let root_path = Path::new("tests/examples/ladybird");
+    let root_path = Path::new(".");
     let docs = grab_all_documents(std::hint::black_box(&root_path));
 
     c.bench_function("chunk_all_documents", |b| {
