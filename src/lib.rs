@@ -76,11 +76,7 @@ fn print_chunk_recursive(
     indent: usize,
 ) {
     let indent_str = "  ".repeat(indent);
-    let text_preview = if chunk.text.len() > 100 {
-        format!("{}...", &chunk.text[0..100])
-    } else {
-        chunk.text.clone()
-    };
+    let text_preview = &chunk.text;
 
     println!(
         "{}{} [{}]: {} tokens, {} children (parent: {:?})",
@@ -199,7 +195,7 @@ fn traverse_and_chunk(
     let start = node.start_byte() as usize;
     let end = node.end_byte() as usize;
     let chunk_text = &doc_text[start..end];
-    let token_count = o200k_base().unwrap().encode_ordinary(chunk_text).len();
+    let token_count = chunk_text.len();
 
     let chunk = Chunk {
         id,
@@ -221,7 +217,7 @@ fn naive_chunk_document(doc_text: &str, doc_id: u32, next_id: &AtomicU32) -> Vec
     let mut chunks = vec![];
     for para in doc_text.split("\n\n").filter(|p| !p.trim().is_empty()) {
         let id = next_id.fetch_add(1, Ordering::SeqCst);
-        let tcount = o200k_base().unwrap().encode_ordinary(para).len();
+        let tcount = para.len();
         chunks.push(Chunk {
             id,
             doc_id,

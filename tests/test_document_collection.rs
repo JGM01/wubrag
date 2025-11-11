@@ -14,13 +14,13 @@ fn test_ids_are_unique() {
     }
     assert!(true);
 }
-/*#[test]
+#[test]
 fn test_chunks() {
     let docs = grab_all_documents(Path::new("tests/examples/ratatui"));
     let (chunks, index) = chunk_all_documents(&docs);
     print_chunks_tree(&chunks, Some(&index));
     assert!(true);
-}*/
+}
 
 #[test]
 fn print_doc_names() {
