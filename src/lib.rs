@@ -49,6 +49,7 @@ lazy_static! {
         m.insert("py", tree_sitter_python::LANGUAGE.into());
         m.insert("swift", tree_sitter_swift::LANGUAGE.into());
         m.insert("java", tree_sitter_java::LANGUAGE.into());
+        m.insert("cu", tree_sitter_cuda::LANGUAGE.into());
         m
     };
 }
@@ -305,7 +306,7 @@ fn get_query_from_extension(extension: &str) -> Option<String> {
             "#
             .to_string(),
         ),
-        "cpp" => Some(
+        "cpp" | "cu" => Some(
             r#"
             ;; C++ top-level items
             (function_definition) @chunk
