@@ -356,3 +356,22 @@ pub fn grab_all_documents(root: &Path) -> Vec<Document> {
         .collect();
     docs
 }
+
+use std::fmt::Write as FmtWrite;
+
+pub fn print_document_names(docs: &[Document]) {
+    if docs.is_empty() {
+        println!("No documents found.");
+        return;
+    }
+
+    let mut output = String::with_capacity(docs.len() * 64);
+    writeln!(&mut output, "Found {} documents:", docs.len()).unwrap();
+    writeln!(&mut output, "------------------------").unwrap();
+
+    for (i, doc) in docs.iter().enumerate() {
+        writeln!(&mut output, "{:>3}. {}", i + 1, doc.path).unwrap();
+    }
+
+    println!("{output}");
+}

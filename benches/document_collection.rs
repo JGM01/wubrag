@@ -4,7 +4,7 @@ use std::path::Path;
 use wubrag::*;
 
 fn bench_grab_documents(c: &mut Criterion) {
-    let root_path = Path::new("tests/examples/ladybird");
+    let root_path = Path::new("tests/examples/ratatui");
 
     c.bench_function("grab_all_documents", |b| {
         b.iter(|| {
