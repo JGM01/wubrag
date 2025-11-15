@@ -22,8 +22,9 @@ fn test_chunks() {
 }
 
 #[test]
-fn print_doc_names() {
+fn print_chunks() {
     let docs = grab_all_documents(Path::new("tests/examples/ladybird"));
-    print_document_names(&docs);
+    let chunks = chunk_all_documents(&docs);
+    print_chunks_vec(&chunks.0);
     assert!(true);
 }

@@ -3,7 +3,7 @@ use std::path::Path;
 use wubrag::*;
 
 fn bench_chunk_coreutils(c: &mut Criterion) {
-    let root_path = Path::new("coreutils");
+    let root_path = Path::new("tests/examples/coreutils");
     let docs = grab_all_documents(std::hint::black_box(&root_path));
 
     c.bench_function("chunk_coreutils", |b| {
@@ -13,7 +13,7 @@ fn bench_chunk_coreutils(c: &mut Criterion) {
     });
 }
 fn bench_chunk_ladybird(c: &mut Criterion) {
-    let root_path = Path::new("ladybird");
+    let root_path = Path::new("tests/examples/ladybird");
     let docs = grab_all_documents(std::hint::black_box(&root_path));
 
     c.bench_function("chunk_ladybird", |b| {
@@ -23,7 +23,7 @@ fn bench_chunk_ladybird(c: &mut Criterion) {
     });
 }
 fn bench_chunk_dolphin(c: &mut Criterion) {
-    let root_path = Path::new("dolphin");
+    let root_path = Path::new("tests/examples/dolphin");
     let docs = grab_all_documents(std::hint::black_box(&root_path));
 
     c.bench_function("chunk_dolphin", |b| {
@@ -33,7 +33,7 @@ fn bench_chunk_dolphin(c: &mut Criterion) {
     });
 }
 fn bench_chunk_ratatui(c: &mut Criterion) {
-    let root_path = Path::new("ratatui");
+    let root_path = Path::new("tests/examples/ratatui");
     let docs = grab_all_documents(std::hint::black_box(&root_path));
 
     c.bench_function("chunk_ratatui", |b| {

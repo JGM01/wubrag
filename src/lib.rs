@@ -14,13 +14,11 @@ use tree_sitter::{Language, Node, Parser, Query, QueryCursor, StreamingIterator}
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
-    pub id: u32,                // primary key, u32 because linux kernel is like 40million LOC
-    pub doc_id: u32,            // foreign key id of the document that the chunk is attached to
-    pub text: String,           // content of the chunk
-    pub chunk_type: String,     // whatever is returned by node.kind() with tree-sitter
-    pub parent_id: Option<u32>, // could have a parent, could not
-    pub children_ids: Vec<u32>, // children id vec (no Option because it can just be empty)
-    pub token_count: usize,     // amount of tokens for logic stuff
+    pub id: u32,            // primary key, u32 because linux kernel is like 40million LOC
+    pub doc_id: u32,        // foreign key id of the document that the chunk is attached to
+    pub text: String,       // content of the chunk
+    pub chunk_type: String, // whatever is returned by node.kind() with tree-sitter
+    pub char_count: usize,  // amount of tokens for logic stuff
 }
 
 #[derive(Debug, Clone)]
@@ -51,65 +49,32 @@ lazy_static! {
         m
     };
 }
-
-pub fn print_chunks_tree(chunks: &[Chunk], chunk_index: Option<&HashMap<u32, usize>>) {
-    let roots: Vec<u32> = chunks
-        .iter()
-        .filter_map(|c| c.parent_id.is_none().then_some(c.id))
-        .collect();
-
-    if roots.is_empty() {
-        println!("No root chunks found.");
+pub fn print_chunks_vec(chunks: &[Chunk]) {
+    if chunks.is_empty() {
+        println!("No chunks found.");
         return;
     }
 
-    println!("Chunk Hierarchy Tree ({} total chunks):\n", chunks.len());
-    for &root_id in &roots {
-        let root_idx = chunk_index
-            .as_ref()
-            .and_then(|idx| idx.get(&root_id).copied())
-            .unwrap_or_else(|| chunks.iter().position(|c| c.id == root_id).unwrap_or(0));
-        print_chunk_recursive(&chunks[root_idx], chunks, chunk_index, 0);
-        println!();
+    let mut sorted_chunks = chunks.to_vec();
+    sorted_chunks.par_sort_unstable_by(|a, b| a.doc_id.cmp(&b.doc_id).then(a.id.cmp(&b.id)));
+
+    let mut output = String::new();
+    output.push_str(&format!("Chunks ({} total):\n\n", sorted_chunks.len()));
+
+    for chunk in sorted_chunks {
+        output.push_str(&format!(
+            "{} [{}]: {} chars (doc {})\n",
+            chunk.id, chunk.chunk_type, chunk.char_count, chunk.doc_id
+        ));
+        output.push_str(&format!("  Text: \"{}\"\n", chunk.text.trim()));
+        output.push_str("  ---\n");
     }
-}
 
-fn print_chunk_recursive(
-    chunk: &Chunk,
-    chunks: &[Chunk],
-    chunk_index: Option<&HashMap<u32, usize>>,
-    indent: usize,
-) {
-    let indent_str = "  ".repeat(indent);
-    let text_preview = &chunk.text;
-
-    println!(
-        "{}{} [{}]: {} tokens, {} children (parent: {:?})",
-        indent_str,
-        chunk.id,
-        chunk.chunk_type,
-        chunk.token_count,
-        chunk.children_ids.len(),
-        chunk.parent_id
-    );
-    println!("{}  Text: \"{}\"", indent_str, text_preview.trim());
-    println!("{}  ---", indent_str);
-
-    // Recurse on children
-    for &child_id in &chunk.children_ids {
-        let child_idx = chunk_index
-            .as_ref()
-            .and_then(|idx| idx.get(&child_id).copied())
-            .unwrap_or_else(|| chunks.iter().position(|c| c.id == child_id).unwrap_or(0));
-        if let Some(child_chunk) = chunks.get(child_idx) {
-            print_chunk_recursive(child_chunk, chunks, chunk_index, indent + 1);
-        } else {
-            println!(
-                "{}  [WARNING: Missing child chunk ID {}]",
-                indent_str, child_id
-            );
-        }
+    if output.ends_with("  ---\n") {
+        output.truncate(output.len() - 1);
     }
+
+    println!("{}", output);
 }
 
 pub fn chunk_all_documents(docs: &[Document]) -> (Vec<Chunk>, HashMap<u32, usize>) {
@@ -176,9 +141,7 @@ fn chunk_document(doc_id: u32, doc_text: &str, doc_ext: &str, next_id: &AtomicU3
                     doc_id,
                     text: chunk_text.to_string(),
                     chunk_type: node.kind().to_string(),
-                    parent_id: None,
-                    children_ids: vec![],
-                    token_count,
+                    char_count: token_count,
                 });
             }
         }
@@ -189,9 +152,7 @@ fn chunk_document(doc_id: u32, doc_text: &str, doc_ext: &str, next_id: &AtomicU3
                 doc_id,
                 text: doc_text.trim().to_string(),
                 chunk_type: "document".to_string(),
-                parent_id: None,
-                children_ids: vec![],
-                token_count: doc_text.len(),
+                char_count: doc_text.len(),
             });
         }
     } else {
@@ -200,44 +161,6 @@ fn chunk_document(doc_id: u32, doc_text: &str, doc_ext: &str, next_id: &AtomicU3
 
     chunks.par_sort_unstable_by_key(|c| c.id);
     chunks
-}
-
-fn traverse_and_chunk(
-    node: &Node,
-    doc_text: &str,
-    next_id: &AtomicU32,
-    doc_id: u32,
-    parent_id: Option<u32>,
-) -> Vec<Chunk> {
-    let id = next_id.fetch_add(1, Ordering::SeqCst);
-
-    let mut children = Vec::new();
-    let mut cursor = node.walk();
-
-    for child in node.children(&mut cursor) {
-        let sub_chunks = traverse_and_chunk(&child, doc_text, next_id, doc_id, Some(id));
-        children.extend(sub_chunks);
-    }
-
-    let start = node.start_byte() as usize;
-    let end = node.end_byte() as usize;
-    let chunk_text = &doc_text[start..end];
-    let token_count = chunk_text.len();
-
-    let chunk = Chunk {
-        id,
-        doc_id,
-        text: chunk_text.to_string(),
-        chunk_type: node.kind().to_string(),
-        parent_id,
-        children_ids: children.iter().map(|c| c.id).collect(),
-        token_count,
-    };
-
-    let mut all = Vec::with_capacity(children.len() + 1);
-    all.extend(children);
-    all.push(chunk);
-    all
 }
 
 fn naive_chunk_document(doc_text: &str, doc_id: u32, next_id: &AtomicU32) -> Vec<Chunk> {
@@ -250,9 +173,7 @@ fn naive_chunk_document(doc_text: &str, doc_id: u32, next_id: &AtomicU32) -> Vec
             doc_id,
             text: para.to_string(),
             chunk_type: "paragraph".to_string(),
-            parent_id: None,
-            children_ids: vec![],
-            token_count: tcount,
+            char_count: tcount,
         });
     }
     chunks
