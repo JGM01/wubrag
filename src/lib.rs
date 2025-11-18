@@ -66,33 +66,6 @@ lazy_static! {
         m
     };
 }
-pub fn print_chunks_vec(chunks: &[Chunk]) {
-    if chunks.is_empty() {
-        println!("No chunks found.");
-        return;
-    }
-
-    let mut sorted_chunks = chunks.to_vec();
-    sorted_chunks.par_sort_unstable_by(|a, b| a.doc_id.cmp(&b.doc_id).then(a.id.cmp(&b.id)));
-
-    let mut output = String::new();
-    output.push_str(&format!("Chunks ({} total):\n\n", sorted_chunks.len()));
-
-    for chunk in sorted_chunks {
-        output.push_str(&format!(
-            "{} [{}]: {} chars (doc {})\n",
-            chunk.id, chunk.chunk_type, chunk.char_count, chunk.doc_id
-        ));
-        output.push_str(&format!("  Text: \"{}\"\n", chunk.text.trim()));
-        output.push_str("  ---\n");
-    }
-
-    if output.ends_with("  ---\n") {
-        output.truncate(output.len() - 1);
-    }
-
-    println!("{}", output);
-}
 
 pub fn chunk_all_documents(docs: &[Document]) -> (Vec<Chunk>, HashMap<u32, usize>) {
     let next_id = AtomicU32::new(0);
