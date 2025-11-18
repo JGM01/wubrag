@@ -42,8 +42,16 @@ pub struct DocumentMetadata {
     size_bytes: u64,
 }
 
-pub fn create_index() -> Index {
-    todo!()
+pub fn create_index(chunks: &[Chunk], embeddings: Vec<Vec<f32>>) -> Index {
+    Index {
+        chunks: chunks.to_vec(),
+        id_to_idx: chunks
+            .iter()
+            .enumerate()
+            .map(|(idx, chunk)| (chunk.id, idx))
+            .collect(),
+        embeddings,
+    }
 }
 
 pub fn embed_chunks(chunks: &mut Vec<Chunk>) -> Vec<Vec<f32>> {
