@@ -1,3 +1,4 @@
+use fastembed::{InitOptions, TextEmbedding};
 use jwalk::WalkDir;
 use lazy_static::lazy_static;
 use rayon::{
@@ -6,6 +7,7 @@ use rayon::{
 };
 use std::{
     collections::HashMap,
+    error::Error,
     iter,
     path::Path,
     sync::atomic::{AtomicU32, Ordering},
@@ -33,6 +35,21 @@ pub struct Document {
 pub struct DocumentMetadata {
     extension: String,
     size_bytes: u64,
+}
+
+pub fn embed_chunks(chunks: &mut Vec<Chunk>) -> Vec<Vec<f32>> {
+    let model = TextEmbedding::try_new(
+        InitOptions::new(fastembed::EmbeddingModel::AllMiniLML6V2)
+            .with_show_download_progress(true),
+    );
+
+    let texts: Vec<String> = chunks.iter().map(|c| c.text.clone()).collect();
+    let embeddings = model
+        .expect("oopsie model")
+        .embed(texts, None)
+        .expect("oopsie embed");
+
+    embeddings
 }
 
 lazy_static! {
