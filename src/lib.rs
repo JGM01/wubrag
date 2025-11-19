@@ -2,7 +2,7 @@ use fastembed::{InitOptions, TextEmbedding};
 use jwalk::WalkDir;
 use lazy_static::lazy_static;
 use rayon::{
-    iter::{IntoParallelRefIterator, ParallelIterator},
+    iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator},
     slice::ParallelSliceMut,
 };
 use std::{
@@ -33,7 +33,7 @@ impl Index {
         let id_to_idx = chunks
             .iter()
             .enumerate()
-            .map(|(i, ch)| (ch.id, i))
+            .map(|(idx, chunk)| (chunk.id, idx))
             .collect();
 
         Self {
@@ -42,6 +42,55 @@ impl Index {
             id_to_idx,
         }
     }
+    pub fn search(&self, query_embedding: &[f32], k: usize) -> Vec<(usize, f32)> {
+        let mut scored: Vec<(usize, f32)> = self
+            .embeddings
+            .par_iter()
+            .enumerate()
+            .map(|(i, emb)| (i, cosine_similarity(query_embedding, emb)))
+            .collect();
+
+        scored.par_sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+        scored.truncate(k);
+        scored
+    }
+    pub fn retrieve(&self, index: usize) -> &Chunk {
+        &self.chunks[index]
+    }
+
+    pub fn retrieve_by_id(&self, id: u32) -> Option<&Chunk> {
+        let idx = *self.id_to_idx.get(&id)?;
+        Some(&self.chunks[idx])
+    }
+    pub fn query(&self, mut embedder: TextEmbedding, text: &str, k: usize) -> Vec<String> {
+        let mut embedded = embedder
+            .embed(vec![text.to_string()], None)
+            .expect("query embedding failed");
+
+        let query_vec = embedded.pop().expect("missing query vector");
+
+        let results = self.search(&query_vec, k);
+
+        results
+            .into_iter()
+            .map(|(index, _score)| self.retrieve(index).text.clone())
+            .collect()
+    }
+}
+
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    let mut dot = 0.0;
+    let mut na = 0.0;
+    let mut nb = 0.0;
+
+    for i in 0..a.len() {
+        dot += a[i] * b[i];
+        na += a[i] * a[i];
+        nb += b[i] * b[i];
+    }
+
+    dot / (na.sqrt() * nb.sqrt())
 }
 
 #[derive(Debug, Clone)]
