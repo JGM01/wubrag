@@ -10,6 +10,7 @@ src = "src/lib.rs"
 [dependencies]
 criterion = { version = "0.7.0" , features = ["html_reports"] }
 fastembed = "5.2.0"
+indicatif = "0.18.3"
 jwalk = "0.8.1"
 lazy_static = "1.5.0"
 rayon = "1.11.0"
@@ -23,7 +24,6 @@ tree-sitter-javascript = "0.25.0"
 tree-sitter-python = "0.25.0"
 tree-sitter-rust = "0.24.0"
 tree-sitter-swift = "0.7.1"
-walkdir = "2.5.0"
 
 [profile.release]
 debug = "line-tables-only"
@@ -37,14 +37,11 @@ harness = true
 debug = true
 
 [[bench]]
-name = "end_to_end"
-harness = false
-[[bench]]
 name = "document_collection"
 harness = false
 [[bench]]
 name = "document_chunking"
 harness = false
-[[bench]]
-name = "chunk_indexing"
-harness = false
+#[[bench]]
+#name = "chunk_indexing"
+#harness = false
