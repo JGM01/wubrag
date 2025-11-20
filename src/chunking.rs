@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use rayon::prelude::*;
+use sha2::Digest;
 use std::{collections::HashMap, iter};
 use tree_sitter::{Language, Node, Parser, Query, QueryCursor, StreamingIterator};
 
@@ -8,7 +9,10 @@ use crate::document::{Document, DocumentID};
 pub type ChunkID = [u8; 32];
 
 fn compute_chunk_id(doc_id: &DocumentID, chunk_text: &str) -> ChunkID {
-    todo!()
+    let mut hash = sha2::Sha256::new();
+    hash.update(doc_id);
+    hash.update(chunk_text.as_bytes());
+    hash.finalize().into()
 }
 
 #[derive(Debug, Clone)]

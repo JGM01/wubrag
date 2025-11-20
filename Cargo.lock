@@ -3516,6 +3516,7 @@ dependencies = [
  "jwalk",
  "lazy_static",
  "rayon",
+ "sha2",
  "tree-sitter",
  "tree-sitter-c",
  "tree-sitter-cpp",

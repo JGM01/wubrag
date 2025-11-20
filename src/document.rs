@@ -1,14 +1,15 @@
 use jwalk::WalkDir;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::{
-    path::Path,
-    sync::atomic::{AtomicU32, Ordering},
-};
+use sha2::Digest;
+use std::path::Path;
 
 pub type DocumentID = [u8; 32];
 
 fn compute_document_id(path: &str, content: &str) -> DocumentID {
-    todo!()
+    let mut hash = sha2::Sha256::new();
+    hash.update(path.as_bytes());
+    hash.update(content.as_bytes());
+    hash.finalize().into()
 }
 
 #[derive(Debug, Clone)]
