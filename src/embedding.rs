@@ -23,7 +23,7 @@ impl Embedder {
         let mut all = Vec::with_capacity(chunks.len());
 
         for batch in chunks.chunks(batch_size) {
-            let texts: Vec<_> = batch.iter().map(|c| c.text.clone()).collect();
+            let texts: Vec<&str> = batch.iter().map(|c| c.text.as_str()).collect();
             let embeddings = self.model.embed(texts, None).expect("batch failed");
             all.extend(embeddings);
         }

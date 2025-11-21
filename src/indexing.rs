@@ -1,57 +1,52 @@
-use std::collections::HashMap;
+use hnsw_rs::{hnsw::Hnsw, prelude::DistCosine};
 
-use rayon::{
-    iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator},
-    slice::ParallelSliceMut,
-};
+use crate::chunking::Chunk;
 
-use crate::chunking::{Chunk, ChunkID};
-
-pub struct Index {
+pub struct Index<'a> {
     pub chunks: Vec<Chunk>,
-    pub embeddings: Vec<Vec<f32>>,
-    id_to_idx: HashMap<ChunkID, usize>,
+    hnsw_index: Hnsw<'a, f32, DistCosine>,
 }
 
-impl Index {
+impl<'a> Index<'a> {
     pub fn new(chunks: Vec<Chunk>, embeddings: Vec<Vec<f32>>) -> Self {
-        let id_to_idx = chunks.iter().enumerate().map(|(i, c)| (c.id, i)).collect();
+        let embedding_dim = embeddings.first().unwrap().len();
 
-        Self {
-            chunks,
-            embeddings,
-            id_to_idx,
+        let max_elements = embeddings.len();
+        let ef_construction = 200;
+        let max_nb_connection = 16;
+
+        let hnsw_index = Hnsw::<f32, DistCosine>::new(
+            max_nb_connection,
+            max_elements,
+            ef_construction,
+            embedding_dim,
+            DistCosine {},
+        );
+
+        for (idx, embedding) in embeddings.iter().enumerate() {
+            hnsw_index.insert((embedding.as_slice(), idx));
         }
+
+        Self { chunks, hnsw_index }
     }
 
-    pub fn search(&self, query: &[f32], k: usize) -> Vec<(usize, f32)> {
-        let mut scored: Vec<_> = self
-            .embeddings
-            .par_iter()
-            .enumerate()
-            .map(|(i, emb)| (i, cosine(query, emb)))
+    pub fn search(&self, query: &[f32], k: usize, ef_search: usize) -> Vec<(usize, f32)> {
+        let neighbors = self.hnsw_index.search(query, k, ef_search);
+
+        let results = neighbors
+            .into_iter()
+            .map(|neighbor| {
+                let idx = neighbor.d_id;
+                let distance = neighbor.distance;
+                let similarity = 1.0 - distance;
+                (idx, similarity)
+            })
             .collect();
 
-        scored.par_sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        scored.truncate(k);
-        scored
+        results
     }
 
     pub fn retrieve(&self, idx: usize) -> &Chunk {
         &self.chunks[idx]
     }
-}
-
-fn cosine(a: &[f32], b: &[f32]) -> f32 {
-    let mut dot = 0.0;
-    let mut na = 0.0;
-    let mut nb = 0.0;
-
-    for i in 0..a.len() {
-        dot += a[i] * b[i];
-        na += a[i] * a[i];
-        nb += b[i] * b[i];
-    }
-
-    dot / (na.sqrt() * nb.sqrt())
 }
