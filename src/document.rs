@@ -2,6 +2,7 @@ use crate::error::{RAGError, Result};
 use jwalk::WalkDir;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sha2::Digest;
+use simdutf8::basic::from_utf8;
 use std::{io, path::Path};
 pub type DocumentID = [u8; 32];
 
@@ -39,7 +40,6 @@ pub fn grab_all_documents(root: &Path) -> Result<Vec<Document>> {
                 .map(|p| p.to_path_buf()),
             Ok(_) => None,
             Err(err) => {
-                // Log but don't fail on individual file errors
                 eprintln!("Warning: Failed to walk directory entry: {}", err);
                 None
             }
@@ -56,12 +56,12 @@ pub fn grab_all_documents(root: &Path) -> Result<Vec<Document>> {
 
 fn load_document(root: &Path, relative: &Path) -> Result<Document> {
     let path = root.join(relative);
-    let text = std::fs::read_to_string(&path).map_err(|e| RAGError::FileRead {
+    let metadata = std::fs::metadata(&path).map_err(|e| RAGError::FileRead {
         path: path.clone(),
         source: e,
     })?;
 
-    let metadata = std::fs::metadata(&path).map_err(|e| RAGError::FileRead {
+    let text = std::fs::read_to_string(&path).map_err(|e| RAGError::FileRead {
         path: path.clone(),
         source: e,
     })?;
