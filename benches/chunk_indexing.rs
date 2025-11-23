@@ -1,15 +1,14 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::path::Path;
 
-use wubrag::{chunking::Chunker, document::grab_all_documents, embedding::Embedder};
+use wubrag::{chunking::chunk_all_documents, document::grab_all_documents, embedding::Embedder};
 
 fn bench_embed_for_dir(c: &mut Criterion, name: &str, dir: &str) {
     let root_path = Path::new(dir);
 
     let docs = grab_all_documents(std::hint::black_box(&root_path));
 
-    let chunker = Chunker::new();
-    let (mut chunks, _) = chunker.chunk_all_documents(std::hint::black_box(&docs));
+    let (mut chunks, _) = chunk_all_documents(std::hint::black_box(&docs));
 
     let mut embedder = Embedder::new();
 

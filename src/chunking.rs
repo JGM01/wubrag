@@ -17,50 +17,27 @@ fn compute_chunk_id(doc_id: &DocumentID, chunk_text: &str) -> ChunkID {
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
-    pub id: ChunkID,        // primary key
-    pub doc_id: DocumentID, // foreign key id of the document that the chunk is attached to
-    pub text: String,       // content of the chunk
-    pub chunk_type: String, // whatever is returned by node.kind() with tree-sitter (or "paragraph"/"document")
-    pub char_count: usize,  // amount of characters
+    pub id: ChunkID,              // primary key
+    pub doc_id: DocumentID,       // foreign key id of the document that the chunk is attached to
+    pub text: String,             // content of the chunk
+    pub chunk_type: &'static str, // whatever is returned by node.kind() with tree-sitter (or "paragraph"/"document")
+    pub char_count: usize,        // amount of characters
 }
 
-pub struct Chunker {}
+pub fn chunk_all_documents(docs: &[Document]) -> (Vec<Chunk>, HashMap<DocumentID, usize>) {
+    let chunks: Vec<Chunk> = docs.par_iter().flat_map(chunk_document).collect();
 
-impl Chunker {
-    pub fn new() -> Self {
-        Self {}
-    }
+    let id_to_idx: HashMap<ChunkID, usize> =
+        chunks.iter().enumerate().map(|(i, c)| (c.id, i)).collect();
 
-    pub fn chunk_all_documents(
-        &self,
-        docs: &[Document],
-    ) -> (Vec<Chunk>, HashMap<DocumentID, usize>) {
-        let doc_chunks_vec: Vec<Vec<Chunk>> = docs
-            .par_iter()
-            .map(|doc| self.chunk_document(&doc))
-            .collect();
+    (chunks, id_to_idx)
+}
 
-        let mut all_chunks =
-            Vec::with_capacity(doc_chunks_vec.iter().map(|v| v.len()).sum::<usize>());
-        for mut v in doc_chunks_vec {
-            all_chunks.append(&mut v);
-        }
-
-        let id_to_idx: HashMap<DocumentID, usize> = all_chunks
-            .iter()
-            .enumerate()
-            .map(|(idx, chunk)| (chunk.id, idx))
-            .collect();
-
-        (all_chunks, id_to_idx)
-    }
-
-    fn chunk_document(&self, doc: &Document) -> Vec<Chunk> {
-        if let Some(lang) = LANGUAGE_MAP.get(&doc.ext.as_str()) {
-            chunk_with_treesitter(&doc, lang)
-        } else {
-            naive_chunk_document(&doc.text, doc.id)
-        }
+fn chunk_document(doc: &Document) -> Vec<Chunk> {
+    if let Some(lang) = LANGUAGE_MAP.get(&doc.ext.as_str()) {
+        chunk_with_treesitter(&doc, lang)
+    } else {
+        naive_chunk_document(&doc.text, doc.id)
     }
 }
 
@@ -104,51 +81,49 @@ fn chunk_with_treesitter(doc: &Document, lang: &Language) -> Vec<Chunk> {
     let mut cursor = QueryCursor::new();
     let b_text = doc.text.as_bytes();
 
-    let text_callback = |node: Node| {
-        let start = node.start_byte() as usize;
-        let end = node.end_byte() as usize;
-        let slice = &b_text[start..end];
-        iter::once(slice)
-    };
-
-    let mut qmatches = cursor.matches(&query, root, text_callback);
+    let mut qmatches = cursor.matches(&query, root, b_text);
 
     while let Some(m) = qmatches.next() {
         for capture in m.captures {
             let node = capture.node;
-            let start = node.start_byte() as usize;
-            let end = node.end_byte() as usize;
-            if start >= doc.text.len() || end > doc.text.len() || start >= end {
+
+            let is_top_level = node
+                .parent()
+                .map(|p| p.kind() == "source_file" || p.kind() == "module")
+                .unwrap_or(false);
+
+            if !is_top_level {
                 continue;
             }
-            let chunk_text = &doc.text[start..end].trim();
-            if chunk_text.is_empty() {
+
+            let raw_text = node.utf8_text(doc.text.as_bytes()).ok().expect(":D");
+            if raw_text.trim().is_empty() {
                 continue;
             }
-            let token_count = chunk_text.len();
-            let id = compute_chunk_id(&doc.id, chunk_text);
+
+            let id = compute_chunk_id(&doc.id, raw_text);
+
             chunks.push(Chunk {
                 id,
                 doc_id: doc.id,
-                text: chunk_text.to_string(),
-                chunk_type: node.kind().to_string(),
-                char_count: token_count,
+                text: raw_text.trim().to_string(),
+                chunk_type: node.kind(),
+                char_count: raw_text.len(),
             });
         }
     }
 
     if chunks.is_empty() {
-        let id = compute_chunk_id(&doc.id, &doc.text.trim().to_string());
+        let id = compute_chunk_id(&doc.id, &doc.text.to_string());
         chunks.push(Chunk {
             id,
             doc_id: doc.id,
             text: doc.text.trim().to_string(),
-            chunk_type: "document".to_string(),
+            chunk_type: "document",
             char_count: doc.text.len(),
         });
     }
 
-    chunks.par_sort_unstable_by_key(|c| c.id);
     chunks
 }
 
@@ -161,18 +136,18 @@ fn naive_chunk_document(doc_text: &str, doc_id: DocumentID) -> Vec<Chunk> {
             id,
             doc_id,
             text: para.to_string(),
-            chunk_type: "paragraph".to_string(),
+            chunk_type: "paragraph",
             char_count: tcount,
         });
     }
 
     if chunks.is_empty() {
-        let id = compute_chunk_id(&doc_id, &doc_text.trim().to_string());
+        let id = compute_chunk_id(&doc_id, &doc_text.to_string());
         chunks.push(Chunk {
             id,
             doc_id,
             text: doc_text.trim().to_string(),
-            chunk_type: "document".to_string(),
+            chunk_type: "document",
             char_count: doc_text.len(),
         });
     }
