@@ -1,8 +1,8 @@
-extern crate wubrag;
+extern crate wubraglib;
 
 use std::{collections::HashSet, path::Path};
 
-use wubrag::*;
+use wubraglib::*;
 
 #[test]
 fn test_ids_are_unique() {

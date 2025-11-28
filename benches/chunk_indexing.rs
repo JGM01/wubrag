@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::path::Path;
 
-use wubrag::{chunking::chunk_all_documents, document::grab_all_documents, embedding::Embedder};
+use wubraglib::{chunking::chunk_all_documents, document::grab_all_documents, embedding::Embedder};
 
 fn bench_embed_for_dir(c: &mut Criterion, name: &str, dir: &str) {
     let root_path = Path::new(dir);

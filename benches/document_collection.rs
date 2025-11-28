@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::path::Path;
 
-use wubrag::document::grab_all_documents;
+use wubraglib::document::grab_all_documents;
 
 fn bench_grab_for_dir(c: &mut Criterion, name: &str, dir: &str) {
     let root_path = Path::new(dir);
