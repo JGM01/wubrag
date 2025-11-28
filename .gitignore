@@ -1,0 +1,13 @@
+debug
+target
+
+*.svg
+
+**/*.rs.bk
+
+*.pdb
+
+**/mutants.out*/
+
+.fastembed_cache/
+.DS_Store
