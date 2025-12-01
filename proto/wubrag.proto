@@ -3,6 +3,16 @@ package wubrag;
 
 service WubRAG {
   rpc index(FilePath) returns (IndexResult);
+  rpc search(SearchKey) returns (SearchResult);
+}
+
+message SearchKey {
+  string text = 1;
+}
+
+message SearchResult {
+  repeated string resultStrings = 1;
+  int32 stringAmt = 2;
 }
 
 
