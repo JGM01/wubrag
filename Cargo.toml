@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tonic-prost = "0.14.2"
 wubraglib = {git = "https://github.com/JGM01/wubraglib.git", branch = "main"}
+
+[build-dependencies]
+tonic-prost-build = "*"
