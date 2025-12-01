@@ -1,0 +1,19 @@
+syntax = "proto3";
+package wubrag;
+
+service WubRAG {
+  rpc index(FilePath) returns (IndexResult);
+}
+
+
+message FilePath {
+  string path = 1;
+}
+
+message IndexResult {
+  // did it work
+  bool ok = 1;
+  
+  // if it didnt, this'll be non-empty
+  string err = 2;
+}
