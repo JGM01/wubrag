@@ -16,9 +16,8 @@ pub mod wubrag {
 }
 
 /// Descriptor bytes included at compile-time (from OUT_DIR/wubrag_descriptor.bin)
-/// This MUST be at item level (outside functions). Do NOT put this inside `main`.
 pub mod descriptors {
-    tonic::include_file_descriptor_set!("wubrag_descriptor");
+    pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("wubrag_descriptor");
 }
 
 /// Re-export the generated proto types for convenient use
