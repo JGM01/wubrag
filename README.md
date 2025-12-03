@@ -1,5 +1,7 @@
 # Wubrag
 
+runs on `localhost:5001`
+
 index with
 ```bash
 grpcurl -plaintext -d '{"path": "ABSOLUTE PATH TO SOME DIRECTORY" }' localhost:5001 wubrag.WubRAG/index
