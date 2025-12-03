@@ -1,0 +1,29 @@
+syntax = "proto3";
+package wubrag;
+
+service WubRAG {
+  rpc index(FilePath) returns (IndexResult);
+  rpc search(SearchKey) returns (SearchResult);
+}
+
+message SearchKey {
+  string text = 1;
+}
+
+message SearchResult {
+  repeated string resultStrings = 1;
+  int32 stringAmt = 2;
+}
+
+
+message FilePath {
+  string path = 1;
+}
+
+message IndexResult {
+  // did it work
+  bool ok = 1;
+  
+  // if it didnt, this'll be non-empty
+  string err = 2;
+}
