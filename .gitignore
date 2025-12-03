@@ -1,6 +1,5 @@
 debug
 target
-tests/examples
 
 *.svg
 
@@ -12,3 +11,4 @@ tests/examples
 
 .fastembed_cache/
 .DS_Store
+

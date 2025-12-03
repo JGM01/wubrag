@@ -1,52 +1,16 @@
+
 [package]
-name = "wubraglib"
+name = "wubrag"
 version = "0.1.0"
 edition = "2024"
-
-[lib]
-name = "wubraglib"
-src = "src/lib.rs"
-
+build = "build.rs"
 [dependencies]
-criterion = { version = "0.7.0" , features = ["html_reports"] }
-fastembed = "5.2.0"
-hnsw_rs = "0.3.3"
-indicatif = "0.18.3"
-jwalk = "0.8.1"
-lazy_static = "1.5.0"
-log = "0.4.28"
-rayon = "1.11.0"
-sha2 = "0.10.9"
-simdutf8 = "0.1.5"
-thiserror = "2.0.17"
-tree-sitter = "0.25.10"
-tree-sitter-c = "0.24.1"
-tree-sitter-cpp = "0.23.4"
-tree-sitter-cuda = "0.21.1"
-tree-sitter-html = "0.23.2"
-tree-sitter-java = "0.23.5"
-tree-sitter-javascript = "0.25.0"
-tree-sitter-python = "0.25.0"
-tree-sitter-rust = "0.24.0"
-tree-sitter-swift = "0.7.1"
+prost = "0.14.1"
+tokio = {version= "1.48.0", features = ["full"] }
+tonic = "0.14.2"
+tonic-prost = "0.14.2"
+tonic-reflection = "0.14.2"
+wubraglib = {git = "https://github.com/JGM01/wubraglib.git", branch = "main"}
 
-[profile.release]
-debug = "line-tables-only"
-
-[[test]]
-name = "test_document_collection"  # Name of the test binary
-path = "tests/test_document_collection.rs"
-harness = true 
-
-[profile.bench]
-debug = true
-
-[[bench]]
-name = "document_collection"
-harness = false
-[[bench]]
-name = "document_chunking"
-harness = false
-[[bench]]
-name = "chunk_indexing"
-harness = false
+[build-dependencies]
+tonic-prost-build = "0.14.2"
